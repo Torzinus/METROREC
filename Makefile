@@ -2,4 +2,4 @@ all:
 	gcc -o sync_car sync_car.c
 
 clean:
-	rm -f 
+	rm -f sync_car
