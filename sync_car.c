@@ -1,21 +1,11 @@
 #include <stdio.h>
 #include <pthread.h>
 
-const int MAX_SEATS = 100;
-
-typedef struct station{
-    int waiting;
-    int free_seats;
-    int boarding;
-
-    pthread_cond_t is_full;
-    pthread_cond_t arrived;
-    pthread_mutex_t lock;
-} station;
+#include "sync_car.h"
 
 void station_init(station * station){
     station->waiting = 0;
-    station->free_seats = MAX_SEATS;
+    station->free_seats = 0;
     station->boarding = 0;
 
     pthread_cond_init(&station->is_full, NULL);
@@ -23,19 +13,23 @@ void station_init(station * station){
     pthread_mutex_init(&station->lock, NULL);
 }
 
-//void station_load_car(station *station, int count)
+void station_load_car(station *station, int count){
+    pthread_mutex_lock(&station->lock);
+
+    station->free_seats = count;
+    pthread_cond_broadcast(&station->arrived);
+    while(station->boarding > 0 || (station->waiting > 0 && station->free_seats > 0)){
+        pthread_cond_wait(&station->is_full, &station->lock);
+    }
+    station->free_seats = 0;
+    pthread_mutex_unlock(&station->lock);
+}
 
 //void station_wait_for_car(station *station)
 
 //void station_on_board(station *station)
 
-/* informacoes relevantes:
-total de assentos que cada vagao pode ter (MAX_SEATS) - 
-qtd de assentos ainda disponiveis no vagao (free_seats)
-quantos passageiros estao esperando na estacao (waiting)
-quantos passageiros estao embarcando (boarding)
-
-
+/* 
 pthread mutex:
 init -> inicializa (em station_init)
 lock -> trava (nas secoes criticas)
@@ -44,4 +38,9 @@ unlock -> destrava (nas secoes criticas, dps das operacoes)
 variaveis de condicao:
 is_full
 arrived
+
+station_load_car
+o trem chega na estacao
+acorda as threads dos passageiros para que eles subam no trem
+espera as condicoes para partir (nao tem ninguem esperando, nao tem ninguem entrando, nao tem assentos livres)
 */ 
